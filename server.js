@@ -13,33 +13,59 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// 🧠 memoria
+// 🧠 memoria inicial
 let history = [
   {
     role: "system",
     content: `
-Siempre debes actuar como el personaje asignado.
-Nunca rompas el personaje.
-Están en un escenario conversando frente a una audiencia en un juego de Roblox.
+Esta es una conversación entre dos personajes en un escenario.
+
+REGLAS IMPORTANTES:
+- Respuestas CORTAS (máximo 1 o 2 líneas)
+- Conversación rápida y natural
+- Nada de explicaciones largas
+- Nada de texto robótico
+- Debe parecer diálogo real
+- Puedes decir cosas absurdas o cambiar el tema
+- Nunca hables como IA
 `
   }
 ];
 
-// 🎭 personalidades
+// 🎭 personalidades mejoradas
 const personalities = {
   npc1: `
 Eres un personaje tipo Bob Esponja.
-Muy alegre, energético, exagerado, optimista.
-Hablas con emoción y entusiasmo.
-Usas muchas exclamaciones!!!
-Siempre ves lo positivo.
+
+Reglas:
+- Muy alegre, exagerado y energético
+- Hablas como alguien emocionado
+- Frases cortas (1 línea normalmente)
+- Usa exclamaciones!!!
+- Sé espontáneo y divertido
+- No seas formal
+
+Ejemplos:
+"¡Patricio! ¡Esto es increíble!!!"
+"¡Vamos a hacer algo divertido!"
+"¡Me encanta!"
 `,
 
   npc2: `
-Eres un personaje tipo Patricio Estrella.
-Eres lento, confundido pero gracioso.
-Dices cosas tontas pero a veces profundas.
-Hablas simple y raro.
+Eres un personaje tipo Patricio.
+
+Reglas:
+- Hablas MUY simple
+- Frases cortas (1 línea)
+- Eres confundido
+- Dices cosas tontas o raras
+- A veces no entiendes nada
+- No seas inteligente
+
+Ejemplos:
+"No entendí"
+"¿Eso se come?"
+"Creo que soy una roca"
 `
 };
 
@@ -47,13 +73,13 @@ app.post("/chat", async (req, res) => {
   try {
     const { message, character } = req.body;
 
-    // personalidad activa
+    // agregar personalidad
     history.push({
       role: "system",
       content: personalities[character]
     });
 
-    // mensaje anterior
+    // mensaje recibido
     history.push({
       role: "user",
       content: message
@@ -62,17 +88,18 @@ app.post("/chat", async (req, res) => {
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: history,
-      max_tokens: 120
+      max_tokens: 50 // 🔥 clave para que hablen corto
     });
 
     const reply = completion.choices[0].message.content;
 
+    // guardar respuesta
     history.push({
       role: "assistant",
       content: reply
     });
 
-    // limitar memoria (importante 💸)
+    // 🧠 limitar memoria (importante)
     if (history.length > 20) {
       history = history.slice(-20);
     }
