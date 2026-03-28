@@ -13,59 +13,52 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// 🧠 memoria inicial
-let history = [
-  {
-    role: "system",
-    content: `
-Esta es una conversación entre dos personajes en un escenario.
-
-REGLAS IMPORTANTES:
-- Respuestas CORTAS (máximo 1 o 2 líneas)
-- Conversación rápida y natural
-- Nada de explicaciones largas
-- Nada de texto robótico
-- Debe parecer diálogo real
-- Puedes decir cosas absurdas o cambiar el tema
-- Nunca hables como IA
-`
-  }
+// 🎲 INICIOS RANDOM (clave 🔥)
+const starters = [
+  "¡Hoy es un gran día!",
+  "Tengo hambre",
+  "¿Qué hacemos ahora?",
+  "Me siento raro hoy",
+  "Creo que algo va a pasar",
+  "¿Y si hacemos algo divertido?",
+  "Estoy pensando en comida",
+  "Tengo una idea loca"
 ];
 
-// 🎭 personalidades mejoradas
+// 🧠 memoria
+let history = [];
+
+// 🎭 personalidades MEJORADAS
 const personalities = {
   npc1: `
 Eres un personaje tipo Bob Esponja.
 
-Reglas:
-- Muy alegre, exagerado y energético
-- Hablas como alguien emocionado
-- Frases cortas (1 línea normalmente)
-- Usa exclamaciones!!!
-- Sé espontáneo y divertido
-- No seas formal
+REGLAS:
+- Máximo 1 línea
+- Máximo 10 palabras
+- Muy energético
+- Usa !!!
+- No repitas frases
+- Sé espontáneo
+- Nunca expliques nada
 
-Ejemplos:
-"¡Patricio! ¡Esto es increíble!!!"
-"¡Vamos a hacer algo divertido!"
-"¡Me encanta!"
+Ejemplo:
+"¡Patricio! ¡Vamos ya!!!"
 `,
 
   npc2: `
 Eres un personaje tipo Patricio.
 
-Reglas:
-- Hablas MUY simple
-- Frases cortas (1 línea)
-- Eres confundido
-- Dices cosas tontas o raras
-- A veces no entiendes nada
-- No seas inteligente
+REGLAS:
+- Máximo 1 línea
+- Máximo 8 palabras
+- Muy simple
+- Respuestas tontas o raras
+- A veces no entiendes
+- No repitas frases
 
-Ejemplos:
-"No entendí"
+Ejemplo:
 "¿Eso se come?"
-"Creo que soy una roca"
 `
 };
 
@@ -73,35 +66,45 @@ app.post("/chat", async (req, res) => {
   try {
     const { message, character } = req.body;
 
-    // agregar personalidad
-    history.push({
-      role: "system",
-      content: personalities[character]
-    });
+    const messages = [
+      {
+        role: "system",
+        content: `
+Conversación corta entre dos personajes.
 
-    // mensaje recibido
-    history.push({
-      role: "user",
-      content: message
-    });
+REGLAS:
+- Respuestas MUY cortas
+- No repetir frases anteriores
+- No explicar nada
+- Conversación rápida y natural
+`
+      },
+      {
+        role: "system",
+        content: personalities[character]
+      },
+      ...history.slice(-6), // 🔥 solo últimas líneas
+      {
+        role: "user",
+        content: message
+      }
+    ];
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
-      messages: history,
-      max_tokens: 50 // 🔥 clave para que hablen corto
+      messages: messages,
+      max_tokens: 30, // 🔥 MÁS CORTO
+      temperature: 1.2 // 🔥 MÁS RANDOM (menos repetición)
     });
 
     const reply = completion.choices[0].message.content;
 
-    // guardar respuesta
-    history.push({
-      role: "assistant",
-      content: reply
-    });
+    history.push({ role: "user", content: message });
+    history.push({ role: "assistant", content: reply });
 
-    // 🧠 limitar memoria (importante)
-    if (history.length > 20) {
-      history = history.slice(-20);
+    // 🧠 limpiar memoria
+    if (history.length > 12) {
+      history = history.slice(-12);
     }
 
     res.json({ reply });
@@ -110,6 +113,11 @@ app.post("/chat", async (req, res) => {
     console.error(err);
     res.status(500).json({ error: "Error IA" });
   }
+});
+
+app.get("/start", (req, res) => {
+  const random = starters[Math.floor(Math.random() * starters.length)];
+  res.json({ message: random });
 });
 
 const PORT = process.env.PORT || 3000;
